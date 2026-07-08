@@ -75,6 +75,7 @@ CREATE POLICY "Gestor gerencia roles" ON public.user_roles FOR ALL TO authentica
 CREATE TABLE public.clientes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome TEXT NOT NULL,
+  cnpj TEXT,
   endereco TEXT,
   contato TEXT,
   telefone TEXT,

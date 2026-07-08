@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { toast } from "sonner";
 import { UserPlus, Trash2, ShieldCheck, ShieldOff, Save } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { inviteUsuario, removerUsuario, alternarRoleGestor, salvarValorHora } from "@/lib/admin.functions";
+import { inviteUsuario, removerUsuario, alternarRoleGestor, createUsuarioSemEmail, salvarValorHora } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/tecnicos")({ component: TecnicosPage });
 
@@ -23,10 +23,12 @@ function TecnicosPage() {
   const { user, isGestor, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [openAdd, setOpenAdd] = useState(false);
   const [form, setForm] = useState({ email: "", nome: "", role: "tecnico" as "tecnico" | "gestor" | "admin" | "estoquista" });
   const [valorEdit, setValorEdit] = useState<Record<string, string>>({});
 
   const invite = useServerFn(inviteUsuario);
+  const createWithoutEmail = useServerFn(createUsuarioSemEmail);
   const remove = useServerFn(removerUsuario);
   const toggleGestor = useServerFn(alternarRoleGestor);
   const saveValor = useServerFn(salvarValorHora);
@@ -46,6 +48,16 @@ function TecnicosPage() {
     mutationFn: async () => { await invite({ data: { ...form, redirectTo: `${window.location.origin}/reset-password` } }); },
     onSuccess: () => {
       toast.success("Convite enviado! O usuário receberá um email para definir a senha.");
+      qc.invalidateQueries({ queryKey: ["tecnicos"] });
+      setOpen(false); setForm({ email: "", nome: "", role: "tecnico" });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const doCreateWithoutEmail = useMutation({
+    mutationFn: async () => { await createWithoutEmail({ data: { nome: form.nome, role: form.role } }); },
+    onSuccess: () => {
+      toast.success("Técnico cadastrado sem email.");
       qc.invalidateQueries({ queryKey: ["tecnicos"] });
       setOpen(false); setForm({ email: "", nome: "", role: "tecnico" });
     },
@@ -76,35 +88,71 @@ function TecnicosPage() {
         title="Técnicos & Gestores"
         description="Convide usuários pelo email. Cada pessoa define a própria senha ao abrir o link recebido."
         actions={isGestor && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><UserPlus className="mr-2 h-4 w-4" /> Convidar</Button></DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Convidar novo usuário</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div><Label>Nome</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
-                <div><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-                <div><Label>Papel</Label>
-                  <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as any })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="tecnico">Técnico</SelectItem>
-                      <SelectItem value="estoquista">Estoquista</SelectItem>
-                      <SelectItem value="gestor">Gestor</SelectItem>
-                      {isAdmin && <SelectItem value="admin">Admin (gestor total)</SelectItem>}
-                    </SelectContent>
-                  </Select>
+          <>
+            <Dialog open={open} onOpenChange={(value) => {
+              setOpen(value);
+              if (!value) setForm({ email: "", nome: "", role: "tecnico" });
+            }}>
+              <DialogTrigger asChild><Button><UserPlus className="mr-2 h-4 w-4" /> Convidar</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Convidar novo usuário</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div><Label>Nome</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
+                  <div><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+                  <div><Label>Papel</Label>
+                    <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as any })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tecnico">Técnico</SelectItem>
+                        <SelectItem value="estoquista">Estoquista</SelectItem>
+                        <SelectItem value="gestor">Gestor</SelectItem>
+                        {isAdmin && <SelectItem value="admin">Admin (gestor total)</SelectItem>}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Quando houver email, o usuário recebe um convite para definir a senha. Email opcional.
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Um email será enviado com um link para o usuário definir a senha e acessar o sistema.
-                </p>
-              </div>
-              <DialogFooter>
-                <Button onClick={() => doInvite.mutate()} disabled={!form.email || !form.nome || doInvite.isPending}>
-                  {doInvite.isPending ? "Enviando…" : "Enviar convite"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button onClick={() => doInvite.mutate()} disabled={!form.nome || !form.email || doInvite.isPending}>
+                    {doInvite.isPending ? "Enviando…" : "Enviar convite"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={openAdd} onOpenChange={(value) => {
+              setOpenAdd(value);
+              if (!value) setForm({ email: "", nome: "", role: "tecnico" });
+            }}>
+              <DialogTrigger asChild><Button variant="secondary" className="ml-2">Adicionar técnico</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Adicionar técnico</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div><Label>Nome</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
+                  <div><Label>Papel</Label>
+                    <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as any })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tecnico">Técnico</SelectItem>
+                        <SelectItem value="estoquista">Estoquista</SelectItem>
+                        <SelectItem value="gestor">Gestor</SelectItem>
+                        {isAdmin && <SelectItem value="admin">Admin (gestor total)</SelectItem>}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Cria um técnico direto sem exigir email. O cadastro será feito imediatamente.
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => doCreateWithoutEmail.mutate()} disabled={!form.nome || doCreateWithoutEmail.isPending}>
+                    {doCreateWithoutEmail.isPending ? "Cadastrando…" : "Adicionar técnico"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
         )}
       />
       <Card><CardContent className="p-0">
@@ -123,7 +171,7 @@ function TecnicosPage() {
               return (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.nome}</TableCell>
-                  <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                  <TableCell className="text-muted-foreground">{u.email ?? "—"}</TableCell>
                   <TableCell>
                     {éAdmin && <Badge className="mr-1 bg-primary text-primary-foreground">admin</Badge>}
                     {u.roles.filter((r: string) => r !== "admin").map((r: string) => (

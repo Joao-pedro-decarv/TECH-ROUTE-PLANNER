@@ -24,7 +24,7 @@ function ClientesPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const emptyForm = { nome: "", endereco: "", bairro: "", cidade: "", rota_id: "", contato: "", telefone: "", observacoes: "" };
+  const emptyForm = { nome: "", rota_id: "", contato: "", telefone: "", observacoes: "" };
   const [form, setForm] = useState<any>(emptyForm);
 
   const { data: clientes = [] } = useQuery({
@@ -66,7 +66,7 @@ function ClientesPage() {
   const openEdit = (c: any) => {
     setEditing(c);
     setForm({
-      nome: c.nome, endereco: c.endereco ?? "", bairro: c.bairro ?? "", cidade: c.cidade ?? "",
+      nome: c.nome ?? "",
       rota_id: c.rota_id ?? "", contato: c.contato ?? "", telefone: c.telefone ?? "", observacoes: c.observacoes ?? "",
     });
     setOpen(true);
@@ -81,12 +81,7 @@ function ClientesPage() {
             <DialogContent>
               <DialogHeader><DialogTitle>{editing ? "Editar" : "Novo"} cliente</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div><Label>Nome</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
-                <div><Label>Endereço</Label><Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Bairro</Label><Input value={form.bairro} onChange={(e) => setForm({ ...form, bairro: e.target.value })} /></div>
-                  <div><Label>Cidade</Label><Input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} /></div>
-                </div>
+                <div><Label>Nome</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Razão social ou nome fantasia" /></div>
                 <div><Label>Rota</Label>
                   <Select value={form.rota_id || "none"} onValueChange={(v) => setForm({ ...form, rota_id: v === "none" ? "" : v })}>
                     <SelectTrigger><SelectValue placeholder="Sem rota" /></SelectTrigger>
@@ -110,16 +105,13 @@ function ClientesPage() {
       <Card><CardContent className="p-0 overflow-x-auto">
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Nome</TableHead><TableHead>Bairro</TableHead><TableHead>Cidade</TableHead>
-            <TableHead>Rota</TableHead><TableHead>Contato</TableHead><TableHead>Telefone</TableHead>
-            <TableHead>Endereço</TableHead><TableHead className="w-24"></TableHead>
+            <TableHead>Nome</TableHead><TableHead>Rota</TableHead>
+            <TableHead>Contato</TableHead><TableHead>Telefone</TableHead><TableHead className="w-24"></TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {clientes.map((c: any) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.nome}</TableCell>
-                <TableCell>{c.bairro ?? "—"}</TableCell>
-                <TableCell>{c.cidade ?? "—"}</TableCell>
                 <TableCell>
                   {c.rotas ? (
                     <span className="inline-flex items-center gap-1.5 text-sm">
@@ -130,7 +122,6 @@ function ClientesPage() {
                 </TableCell>
                 <TableCell>{c.contato}</TableCell>
                 <TableCell>{c.telefone}</TableCell>
-                <TableCell className="text-muted-foreground">{c.endereco}</TableCell>
                 <TableCell className="text-right">
                   {isGestor && <>
                     <Button size="icon" variant="ghost" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
@@ -139,7 +130,7 @@ function ClientesPage() {
                 </TableCell>
               </TableRow>
             ))}
-            {clientes.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Nenhum cliente cadastrado.</TableCell></TableRow>}
+            {clientes.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">Nenhum cliente cadastrado.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent></Card>

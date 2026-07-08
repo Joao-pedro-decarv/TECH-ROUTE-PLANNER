@@ -92,6 +92,38 @@ export const alternarRoleAdmin = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const createUsuarioSemEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { nome: string; role: "admin" | "gestor" | "tecnico" | "estoquista" }) => data)
+  .handler(async ({ data, context }) => {
+    const caller = await ensureAdminOrGestor(context);
+    if (data.role === "admin" && caller !== "admin") throw new Error("Apenas admin pode criar outro admin.");
+
+    const { supabase } = context;
+    // Gerar um id localmente para evitar violação de NOT NULL caso o schema
+    // ainda não defina um default gen_random_uuid() para profiles.id.
+    const newId = (globalThis as any).crypto?.randomUUID
+      ? (globalThis as any).crypto.randomUUID()
+      : require('crypto').randomUUID();
+    const { data: inserted, error: insertError } = await supabase
+      .from("profiles")
+      .insert({ id: newId, nome: data.nome, email: null })
+      .select("id")
+      .limit(1);
+
+    if (insertError) throw new Error(insertError.message);
+    const newUserId = inserted?.[0]?.id;
+    if (!newUserId) throw new Error("Falha ao criar técnico.");
+
+    if (data.role === "gestor" || data.role === "admin" || data.role === "estoquista") {
+      const roleEntries = [{ user_id: newUserId, role: data.role }];
+      const { error: roleError } = await supabase.from("user_roles").upsert(roleEntries, { onConflict: "user_id,role" });
+      if (roleError) throw new Error(roleError.message);
+    }
+
+    return { ok: true, userId: newUserId };
+  });
+
 export const salvarPermissoes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { userId: string; permissions: { module: string; can_view: boolean; can_edit: boolean }[] }) => data)

@@ -43,10 +43,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       >
         <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-accent-foreground">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500 text-white">
             <Wrench className="h-4 w-4" />
           </div>
-          <span className="font-display text-lg font-semibold">TechRoute</span>
+          <span className="font-display text-lg font-semibold text-blue-500">Unitech</span>
         </div>
         <nav className="space-y-1 p-3">
           {items.map((it) => {
