@@ -30,8 +30,9 @@ function Dashboard() {
   const [mes, setMes] = useState(format(new Date(), "yyyy-MM"));
   const [tiposAtivos, setTiposAtivos] = useState<string[]>([...TIPOS]);
 
-  const monthStart = formatISO(startOfMonth(new Date(mes + "-01")), { representation: "date" });
-  const monthEnd = formatISO(endOfMonth(new Date(mes + "-01")), { representation: "date" });
+  const monthDate = new Date(Number(mes.slice(0, 4)), Number(mes.slice(5)) - 1, 1);
+  const monthStart = formatISO(startOfMonth(monthDate), { representation: "date" });
+  const monthEnd = formatISO(endOfMonth(monthDate), { representation: "date" });
 
   const { data: osMes = [] } = useQuery({
     queryKey: ["os-mes-dash", monthStart, monthEnd, user?.id, isGestor],

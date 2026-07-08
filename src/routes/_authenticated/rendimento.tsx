@@ -19,8 +19,9 @@ export const Route = createFileRoute("/_authenticated/rendimento")({
 function RendimentoPage() {
   const [mes, setMes] = useState(format(new Date(), "yyyy-MM"));
 
-  const inicio = formatISO(startOfMonth(new Date(mes + "-01")), { representation: "date" });
-  const fim = formatISO(endOfMonth(new Date(mes + "-01")), { representation: "date" });
+  const monthDate = new Date(Number(mes.slice(0, 4)), Number(mes.slice(5)) - 1, 1);
+  const inicio = formatISO(startOfMonth(monthDate), { representation: "date" });
+  const fim = formatISO(endOfMonth(monthDate), { representation: "date" });
 
   const { data: profiles = [] } = useQuery({ queryKey: ["profiles"], queryFn: async () => (await supabase.from("profiles").select("id, nome")).data ?? [] });
   const { data: os = [] } = useQuery({
