@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, Wrench } from "lucide-react";
+import { Plus, Trash2, Wrench, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/modelos")({
@@ -21,7 +21,9 @@ export const Route = createFileRoute("/_authenticated/modelos")({
 function ModelosPage() {
   const qc = useQueryClient();
   const [openModelo, setOpenModelo] = useState(false);
-  const [formModelo, setFormModelo] = useState({ fabricante: "", modelo: "", observacoes: "", toner_padrao: "" });
+  const [editingModelo, setEditingModelo] = useState<any>(null);
+  const emptyModelo = { fabricante: "", modelo: "", observacoes: "", toner_padrao: "" };
+  const [formModelo, setFormModelo] = useState({ ...emptyModelo });
 
   const [selModelo, setSelModelo] = useState<string | null>(null);
   const [openProb, setOpenProb] = useState(false);
@@ -44,9 +46,37 @@ function ModelosPage() {
     queryFn: async () => (await supabase.from("pecas").select("*").order("descricao")).data ?? [],
   });
 
+  const resetModeloForm = () => setFormModelo({ ...emptyModelo });
+
+  const openEditModelo = (m: any) => {
+    setEditingModelo(m);
+    setFormModelo({
+      fabricante: m.fabricante ?? "",
+      modelo: m.modelo ?? "",
+      observacoes: m.observacoes ?? "",
+      toner_padrao: m.toner_padrao ?? "",
+    });
+    setOpenModelo(true);
+  };
+
   const saveModelo = useMutation({
-    mutationFn: async () => { const { error } = await supabase.from("modelos").insert(formModelo as any); if (error) throw error; },
-    onSuccess: () => { toast.success("Modelo criado"); qc.invalidateQueries({ queryKey: ["modelos"] }); setOpenModelo(false); setFormModelo({ fabricante: "", modelo: "", observacoes: "", toner_padrao: "" }); },
+    mutationFn: async () => {
+      const payload = { ...formModelo };
+      if (editingModelo) {
+        const { error } = await supabase.from("modelos").update(payload).eq("id", editingModelo.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("modelos").insert(payload as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success(editingModelo ? "Modelo atualizado" : "Modelo criado");
+      qc.invalidateQueries({ queryKey: ["modelos"] });
+      setOpenModelo(false);
+      setEditingModelo(null);
+      resetModeloForm();
+    },
     onError: (e: any) => toast.error(e.message),
   });
   const delModelo = useMutation({
@@ -80,10 +110,10 @@ function ModelosPage() {
     <>
       <PageHeader title="Modelos & Problemas" description="Cadastre modelos e problemas com peças padrão que devem sempre acompanhar o técnico."
         actions={
-          <Dialog open={openModelo} onOpenChange={setOpenModelo}>
+          <Dialog open={openModelo} onOpenChange={(o) => { setOpenModelo(o); if (!o) { setEditingModelo(null); resetModeloForm(); } }}>
             <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> Novo modelo</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Novo modelo</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editingModelo ? "Editar modelo" : "Novo modelo"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div><Label>Fabricante</Label><Input value={formModelo.fabricante} onChange={(e) => setFormModelo({ ...formModelo, fabricante: e.target.value })} placeholder="Canon, HP, Xerox…" /></div>
                 <div><Label>Modelo</Label><Input value={formModelo.modelo} onChange={(e) => setFormModelo({ ...formModelo, modelo: e.target.value })} placeholder="1643" /></div>
@@ -108,6 +138,7 @@ function ModelosPage() {
                     <TableCell className="font-medium">{m.modelo}</TableCell>
                     <TableCell className="text-muted-foreground">{m.toner_padrao ?? "—"}</TableCell>
                     <TableCell className="text-right">
+                      <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openEditModelo(m); }}><Pencil className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); confirm("Remover modelo?") && delModelo.mutate(m.id); }}><Trash2 className="h-4 w-4" /></Button>
                     </TableCell>
                   </TableRow>

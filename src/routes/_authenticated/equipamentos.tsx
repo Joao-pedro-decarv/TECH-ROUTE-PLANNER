@@ -26,9 +26,9 @@ function EquipamentosPage() {
 
   const { data: equipamentos = [] } = useQuery({
     queryKey: ["equipamentos"],
-    queryFn: async () => (await supabase.from("equipamentos").select("*, modelos(fabricante, modelo), clientes(nome)").order("patrimonio")).data ?? [],
+    queryFn: async () => (await supabase.from("equipamentos").select("*, modelos(id, fabricante, modelo, toner_padrao), clientes(nome)").order("patrimonio")).data ?? [],
   });
-  const { data: modelos = [] } = useQuery({ queryKey: ["modelos"], queryFn: async () => (await supabase.from("modelos").select("id, fabricante, modelo").order("modelo")).data ?? [] });
+  const { data: modelos = [] } = useQuery({ queryKey: ["modelos"], queryFn: async () => (await supabase.from("modelos").select("id, fabricante, modelo, toner_padrao").order("modelo")).data ?? [] });
   const { data: clientes = [] } = useQuery({ queryKey: ["clientes"], queryFn: async () => (await supabase.from("clientes").select("id, nome").order("nome")).data ?? [] });
 
   const save = useMutation({
@@ -64,9 +64,10 @@ function EquipamentosPage() {
                 <div><Label>Modelo</Label>
                   <Select value={form.modelo_id} onValueChange={(v) => setForm({ ...form, modelo_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-                    <SelectContent>{modelos.map((m) => <SelectItem key={m.id} value={m.id}>{m.fabricante} {m.modelo}</SelectItem>)}</SelectContent>
+                    <SelectContent>{modelos.map((m) => <SelectItem key={m.id} value={m.id}>{m.fabricante} {m.modelo}{m.toner_padrao ? ` · ${m.toner_padrao}` : ""}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
+                <div className="text-xs text-muted-foreground">Selecione o modelo do equipamento para que o toner padrão seja puxado automaticamente ao criar uma entrega.</div>
                 <div><Label>Observações</Label><Input value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></div>
               </div>
               <DialogFooter><Button onClick={() => save.mutate()} disabled={!form.patrimonio || !form.cliente_id || !form.modelo_id}>Salvar</Button></DialogFooter>
@@ -82,7 +83,7 @@ function EquipamentosPage() {
               <TableRow key={e.id}>
                 <TableCell className="font-medium">{e.patrimonio}</TableCell>
                 <TableCell className="text-muted-foreground">{e.numero_serie ?? "—"}</TableCell>
-                <TableCell>{e.modelos?.fabricante} {e.modelos?.modelo}</TableCell>
+                <TableCell>{e.modelos?.fabricante} {e.modelos?.modelo}{e.modelos?.toner_padrao ? ` · ${e.modelos.toner_padrao}` : ""}</TableCell>
                 <TableCell>{e.clientes?.nome}</TableCell>
                 <TableCell className="text-right">
                   <Button size="icon" variant="ghost" title="Histórico" asChild>
